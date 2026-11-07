@@ -1,0 +1,23 @@
+{
+  "name": "claude-tab-s10",
+  "version": "1.0.0",
+  "description": "Integração do Claude com o Samsung Galaxy Tab S10 (Termux + Termux:API): assistente por voz, menu de compartilhar, atalhos de tela inicial e servidor MCP para o Claude Code.",
+  "type": "module",
+  "license": "MIT",
+  "bin": {
+    "claude-tab": "bin/claude-tab.mjs",
+    "claude-tab-mcp": "bin/claude-tab-mcp.mjs"
+  },
+  "scripts": {
+    "test": "node --test test/*.test.mjs",
+    "mcp": "node bin/claude-tab-mcp.mjs"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "dependencies": {
+    "@anthropic-ai/sdk": "^1.6.0",
+    "@modelcontextprotocol/sdk": "^1.32.2",
+    "zod": "^4.6.7"
+  }
+}

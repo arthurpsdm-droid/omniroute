@@ -1,0 +1,50 @@
+#!/bin/sh
+# Simula os comandos do Termux:API nos testes. Cada chamada é registrada em
+# $MOCK_LOG como: CALL <nome> <args...> / STDIN <conteúdo>.
+name=$(basename "$0")
+stdin=""
+if [ ! -t 0 ]; then stdin=$(cat); fi
+{
+  printf 'CALL %s' "$name"; for a in "$@"; do printf ' %s' "$a"; done; printf '\n'
+  [ -n "$stdin" ] && printf 'STDIN %s\n' "$stdin"
+} >> "${MOCK_LOG:-/dev/null}"
+
+case "$name" in
+  getprop)
+    case "$1" in
+      ro.product.model) echo "${MOCK_MODEL:-SM-X920}" ;;
+      ro.product.manufacturer) echo samsung ;;
+      ro.build.version.release) echo 16 ;;
+      ro.build.version.sdk) echo 36 ;;
+      ro.build.version.oneui) echo 80500 ;;
+    esac ;;
+  termux-battery-status)
+    echo '{"health":"GOOD","percentage":80,"plugged":"UNPLUGGED","status":"DISCHARGING","temperature":30.5,"current":-410000}' ;;
+  termux-wifi-connectioninfo)
+    echo '{"ssid":"CasaWiFi","rssi":-48,"link_speed_mbps":1200,"ip":"192.168.0.20"}' ;;
+  termux-volume)
+    if [ $# -eq 0 ]; then echo '[{"stream":"music","volume":5,"max_volume":15},{"stream":"ring","volume":7,"max_volume":15}]'; fi ;;
+  termux-clipboard-get) printf '%s' "${MOCK_CLIPBOARD-texto copiado}" ;;
+  termux-sensor)
+    if [ "$1" = "-l" ]; then echo '{"sensors":["LSM6DSO Accelerometer","TCS3701 Light"]}'; fi ;;
+  termux-location)
+    echo '{"latitude":-23.55,"longitude":-46.63,"accuracy":30,"provider":"network"}' ;;
+  termux-notification-list)
+    echo '[{"packageName":"com.whatsapp","title":"Ana","content":"Oi!","when":"2026-11-07 10:00:00","key":"x"}]' ;;
+  termux-fingerprint) echo '{"errors":[],"failed_attempts":0,"auth_result":"AUTH_RESULT_SUCCESS"}' ;;
+  termux-camera-photo)
+    for last; do :; done
+    cp "$MOCK_FIXTURE_IMAGE" "$last" ;;
+  termux-dialog)
+    case "$1" in
+      confirm) printf '{"code":-1,"text":"%s"}\n' "${MOCK_CONFIRM:-yes}" ;;
+      sheet) printf '{"code":-1,"text":"%s","index":0}\n' "${MOCK_SHEET-Resumir}" ;;
+      *) printf '{"code":-1,"text":"%s"}\n' "${MOCK_DIALOG_TEXT:-}" ;;
+    esac ;;
+  termux-speech-to-text)
+    # Fila de falas: uma linha de $MOCK_STT_FILE por chamada.
+    n=$(cat "$MOCK_STT_FILE.n" 2>/dev/null || echo 0); n=$((n + 1)); echo "$n" > "$MOCK_STT_FILE.n"
+    sed -n "${n}p" "$MOCK_STT_FILE" ;;
+  *) : ;;
+esac
+exit 0

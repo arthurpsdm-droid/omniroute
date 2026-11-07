@@ -1,0 +1,5 @@
+#!/data/data/com.termux/files/usr/bin/bash
+# Chamado quando você compartilha um arquivo (imagem, PDF, texto) com o Termux.
+/data/data/com.termux/files/usr/bin/claude-tab compartilhado "$1"
+echo
+read -r -p "Resposta também está na notificação. Enter para fechar " _
