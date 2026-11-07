@@ -40,6 +40,13 @@ export function settings() {
     model: env.CLAUDE_TAB_MODELO || "claude-opus-5-5",
     effort: env.CLAUDE_TAB_ESFORCO || "medium",
     voiceEffort: env.CLAUDE_TAB_ESFORCO_VOZ || "low",
+    studyEffort: env.CLAUDE_TAB_ESFORCO_ESTUDO || "low",
+    // Palavras que "acordam" o Claude no modo estudo com escuta. Inclui grafias
+    // que o reconhecimento de voz costuma produzir para "Claude".
+    wakeWords: (env.CLAUDE_TAB_PALAVRAS_ATIVACAO || "claude,claud,clode,cloud,claudio")
+      .split(",")
+      .map((w) => w.trim())
+      .filter(Boolean),
     // Idioma da fala (TTS) e do reconhecimento de voz.
     language: env.CLAUDE_TAB_IDIOMA || "pt-BR",
     // Como confirmar ações sensíveis (câmera, localização, tela, área de

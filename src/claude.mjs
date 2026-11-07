@@ -115,10 +115,13 @@ export class Conversa {
    *          voz?: boolean, ferramentas?: boolean, onToolCall?: (tool:any, args:any)=>void,
    *          confirm?: (msg:string)=>Promise<boolean>}} opts
    */
-  constructor({ client, settings, voz = false, ferramentas = true, onToolCall, confirm }) {
+  constructor({ client, settings, voz = false, ferramentas = true, onToolCall, confirm, system, effort }) {
     this.client = client ?? createClient();
     this.settings = settings;
     this.voz = voz;
+    // Instruções e esforço ficam fixos durante a conversa (mudar no meio invalida o cache).
+    this.system = system ?? (voz ? SYSTEM_VOZ : SYSTEM_BASE);
+    this.effort = effort ?? (voz ? settings.voiceEffort : settings.effort);
     this.messages = [];
     const ctx = {
       settings,
@@ -144,9 +147,9 @@ export class Conversa {
     const params = {
       model: settings.model,
       max_tokens: 16000,
-      system: this.voz ? SYSTEM_VOZ : SYSTEM_BASE,
+      system: this.system,
       cache_control: { type: "ephemeral" },
-      output_config: { effort: this.voz ? settings.voiceEffort : settings.effort },
+      output_config: { effort: this.effort },
       messages: [...this.messages, { role: "user", content }],
       max_iterations: settings.maxIterations,
     };

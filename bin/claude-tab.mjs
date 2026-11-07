@@ -10,7 +10,8 @@ import { createInterface } from "node:readline";
 import { loadEnvFile, settings as loadSettings, CONFIG_DIR, ENV_FILE } from "../src/config.mjs";
 import { Conversa, explainError } from "../src/claude.mjs";
 import { run, runJson, hasCommand } from "../src/termux.mjs";
-import { falar } from "../src/tools.mjs";
+import { falar, ouvir } from "../src/tools.mjs";
+import { salvarResposta, notificarResposta } from "../src/entrega.mjs";
 import { fileToBlocks, imageBlock, newestImage } from "../src/attachments.mjs";
 import { infoDispositivo } from "../src/device.mjs";
 
@@ -24,6 +25,8 @@ Uso:
   claude-tab tela [pergunta]        analisa a última captura de tela
   claude-tab area [instrução]       trabalha com o texto copiado (área de transferência)
   claude-tab compartilhado <alvo>   usado pelo menu Compartilhar (arquivo, link ou texto)
+  claude-tab estudo [--escutar]     modo estudo: notificação com Escrever/Falar/Encerrar;
+                                    com --escutar, responde quando você diz "Claude, …"
   claude-tab configurar             salva a chave da API do Claude
   claude-tab diagnostico            confere a instalação
   claude-tab mcp                    inicia o servidor MCP (para o Claude Code)
@@ -35,12 +38,15 @@ Opções:
   --copiar                copia a resposta para a área de transferência
   --perguntar             abre uma caixa de texto para você digitar a pergunta
   --sem-ferramentas       não deixa o Claude agir no tablet (só responde)
+  --escutar               (modo estudo) escuta contínua com a palavra "Claude"
 `;
-
-const RESPOSTA_FILE = path.join(os.homedir(), ".cache", "claude-tab", "ultima-resposta.md");
 
 const MENU = [
   ["Resumir", "Resuma o conteúdo abaixo em português, com os pontos principais em tópicos curtos."],
+  [
+    "Responder ao que escrevi",
+    "Leia o que está escrito no conteúdo abaixo (inclusive letra à mão, como numa anotação feita com a S Pen) e responda à pergunta ou ao pedido que aparece ali. Se for um exercício, explique a resolução passo a passo.",
+  ],
   ["Explicar de forma simples", "Explique o conteúdo abaixo de forma simples e didática, em português."],
   ["Traduzir para português", "Traduza o conteúdo abaixo para o português do Brasil, mantendo o sentido e o tom."],
   ["Extrair tarefas e datas", "Liste as tarefas, prazos, datas e compromissos que aparecem no conteúdo abaixo."],
@@ -83,26 +89,10 @@ async function menuAcoes(titulo) {
 
 async function entregar(texto, opts, s) {
   console.log(texto);
-  await fs.mkdir(path.dirname(RESPOSTA_FILE), { recursive: true });
-  await fs.writeFile(RESPOSTA_FILE, texto, "utf8");
+  await salvarResposta(texto);
   const tarefas = [];
   if (opts.copiar) tarefas.push(run("termux-clipboard-set", [], { input: texto }));
-  if (opts.notificar) {
-    const prefix = process.env.PREFIX || "/data/data/com.termux/files/usr";
-    const q = JSON.stringify(RESPOSTA_FILE);
-    tarefas.push(
-      run("termux-notification", [
-        "--id", "claude-tab-resposta",
-        "--group", "claude-tab",
-        "--title", "Claude",
-        "--content", texto.length > 3500 ? `${texto.slice(0, 3500)}…` : texto,
-        "--button1", "Copiar",
-        "--button1-action", `${prefix}/bin/termux-clipboard-set < ${q}`,
-        "--button2", "Compartilhar",
-        "--button2-action", `${prefix}/bin/termux-share -a send ${q}`,
-      ]),
-    );
-  }
+  if (opts.notificar) tarefas.push(notificarResposta(texto));
   for (const r of await Promise.allSettled(tarefas)) {
     if (r.status === "rejected") log(`(aviso) ${r.reason?.message ?? r.reason}`);
   }
@@ -214,14 +204,6 @@ async function cmdCompartilhado(pos, opts) {
 
 const SAIR = /^(tchau|sair|encerrar|parar|chega|até mais|obrigad[oa],? (é )?só isso)\b/i;
 
-async function ouvir() {
-  // Usa o reconhecimento de voz do Android (idioma = idioma do sistema/teclado).
-  const out = await run("termux-speech-to-text", [], { timeoutMs: 60_000 });
-  // O reconhecedor pode imprimir resultados parciais, um por linha; o último é o mais completo.
-  const linhas = out.split(/\r?\n/).map((l) => l.trim()).filter(Boolean);
-  return linhas.at(-1) ?? "";
-}
-
 async function cmdVoz(_pos, opts) {
   const s = loadSettings();
   const conversa = novaConversa(s, opts, { voz: true });
@@ -258,6 +240,17 @@ async function cmdVoz(_pos, opts) {
       return;
     }
   }
+}
+
+async function cmdEstudo(_pos, opts) {
+  const { modoEstudo } = await import("../src/estudo.mjs");
+  await modoEstudo({ settings: loadSettings(), escutar: Boolean(opts.escutar) });
+}
+
+async function cmdEstudoAcao(pos) {
+  const { enviarAcao } = await import("../src/estudo.mjs");
+  const ok = await enviarAcao(pos[0] ?? "");
+  if (!ok) process.exitCode = 1;
 }
 
 async function perguntarOculto(rotulo) {
@@ -330,6 +323,8 @@ const COMANDOS = {
   tela: cmdTela,
   area: cmdArea,
   compartilhado: cmdCompartilhado,
+  estudo: cmdEstudo,
+  "estudo-acao": cmdEstudoAcao,
   configurar: cmdConfigurar,
   diagnostico: cmdDiagnostico,
 };
@@ -345,6 +340,7 @@ async function main(argv = process.argv.slice(2)) {
       copiar: { type: "boolean" },
       perguntar: { type: "boolean" },
       "sem-ferramentas": { type: "boolean" },
+      escutar: { type: "boolean" },
       ajuda: { type: "boolean", short: "h" },
     },
   });

@@ -372,6 +372,17 @@ export async function falar(texto, language = "pt-BR") {
   await run("termux-tts-speak", args, { input: texto, timeoutMs: 30_000 + texto.length * 120 });
 }
 
+/**
+ * Ouve uma fala com o reconhecimento de voz do Android (idioma do sistema) e
+ * devolve o texto, ou "" se ninguém falou.
+ */
+export async function ouvir() {
+  const out = await run("termux-speech-to-text", [], { timeoutMs: 60_000 });
+  // O reconhecedor pode imprimir resultados parciais, um por linha; o último é o mais completo.
+  const linhas = out.split(/\r?\n/).map((l) => l.trim()).filter(Boolean);
+  return linhas.at(-1) ?? "";
+}
+
 export function getTool(name) {
   return TOOLS.find((t) => t.name === name);
 }

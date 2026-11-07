@@ -54,7 +54,8 @@ chmod 700 "$HOME/.shortcuts" "$HOME/.shortcuts/tasks"
 for f in "$REPO"/termux/atalhos/*.sh; do
   nome="$(basename "$f" .sh)"
   case "$nome" in
-    "Claude Voz"|"Claude Code") destino="$HOME/.shortcuts/$nome" ;;        # abrem o terminal
+    "Claude Voz"|"Claude Code"|"Claude Estudo"|"Claude Estudo Voz")
+      destino="$HOME/.shortcuts/$nome" ;;                                     # abrem o terminal
     *) destino="$HOME/.shortcuts/tasks/$nome" ;;                              # rodam em segundo plano
   esac
   install -m 700 "$f" "$destino"
@@ -81,5 +82,6 @@ Próximos passos:
   • Tela inicial: toque e segure > Widgets > Termux:Widget > arraste para a tela.
   • Teste:  claude-tab perguntar "Oi! Qual a bateria do tablet?"
   • Voz:    claude-tab voz
+  • Estudo: claude-tab estudo --escutar   (diga "Claude, …" enquanto estuda)
   • Guia completo: docs/02-integracao-claude.md
 EOF

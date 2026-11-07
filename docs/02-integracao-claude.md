@@ -9,6 +9,8 @@ O guia vai do mais simples (5 minutos, sem instalar nada técnico) ao avançado 
 | **3. claude-tab (este repositório)** | Assistente por voz que **age no tablet**, menu "Compartilhar", atalhos que analisam a tela ou o texto copiado, respostas em notificação | 30 min | Termux + chave da API |
 | **4. Claude Code + MCP** | Claude Code rodando no tablet com acesso às funções do aparelho | 30–60 min | Nível 3 + Ubuntu no Termux |
 
+> **Estudando?** O [modo estudo](#modo-estudo-chamar-o-claude-sem-parar-de-estudar) mostra como chamar o Claude por voz ("Claude, …") ou por escrita (S Pen) sem sair do Samsung Notes.
+
 ---
 
 ## Nível 1: App oficial do Claude
@@ -73,8 +75,9 @@ flowchart LR
 |---|---|
 | **Claude Voz** (widget) · `claude-tab voz` | Conversa por voz. Você fala, o Claude responde em voz alta e **age no tablet** ("abaixa o brilho", "qual a bateria?", "anota isso", "liga a lanterna"). Diga "tchau" para sair |
 | **Claude Tela** (widget) · `claude-tab tela` | Analisa a **última captura de tela**: explica um erro, resolve um exercício, resume um gráfico. A resposta chega como notificação |
-| **Claude Copiado** (widget) · `claude-tab area` | Pega o texto copiado e oferece um menu: Resumir, Explicar, Traduzir, Extrair tarefas, Revisar, Salvar como nota, Perguntar… |
+| **Claude Copiado** (widget) · `claude-tab area` | Pega o texto copiado e oferece um menu: Resumir, Responder ao que escrevi, Explicar, Traduzir, Extrair tarefas, Revisar, Salvar como nota, Perguntar… |
 | **Claude Pergunta** (widget) | Abre uma caixa de texto e responde em notificação |
+| **Claude Estudo** / **Claude Estudo Voz** (widgets) · `claude-tab estudo [--escutar]` | Modo estudo: notificação fixa com Escrever, Falar e Encerrar. Com escuta, responde quando você diz "Claude, …" (veja abaixo) |
 | **Compartilhar › Termux** (em qualquer app) | Mesmo menu de ações para **links** (o Claude lê a página), **textos**, **PDFs** e **imagens** |
 | `claude-tab perguntar "…" -a arquivo.pdf` | Uso no terminal, com anexos e `--falar`, `--notificar`, `--copiar` |
 
@@ -116,7 +119,7 @@ O instalador:
 - copia os atalhos para o Termux:Widget e configura o menu Compartilhar;
 - pede a chave da API e a guarda em `~/.config/claude-tab/env`, com permissão só para você.
 
-**5. Widget na tela inicial:** toque e segure › **Widgets › Termux:Widget** › arraste. Aparecem *Claude Voz*, *Claude Tela*, *Claude Copiado*, *Claude Pergunta* e *Claude Code*.
+**5. Widget na tela inicial:** toque e segure › **Widgets › Termux:Widget** › arraste. Aparecem *Claude Voz*, *Claude Tela*, *Claude Copiado*, *Claude Pergunta*, *Claude Estudo*, *Claude Estudo Voz* e *Claude Code*.
 
 **6. Teste:**
 
@@ -136,6 +139,8 @@ claude-tab voz
 | `CLAUDE_TAB_ESFORCO_VOZ` | `low` | Mesmo ajuste para o modo voz (baixo = resposta mais rápida) |
 | `CLAUDE_TAB_IDIOMA` | `pt-BR` | Idioma da voz (TTS) |
 | `CLAUDE_TAB_CONFIRMAR` | `dialogo` | Confirmação de ações sensíveis: `dialogo` (Sim/Não), `digital` (impressão digital) ou `nenhum` |
+| `CLAUDE_TAB_ESFORCO_ESTUDO` | `low` | Profundidade de raciocínio no modo estudo (`medium` dá respostas mais elaboradas, um pouco mais lentas) |
+| `CLAUDE_TAB_PALAVRAS_ATIVACAO` | `claude,claud,clode,cloud,claudio` | Palavras que acordam o Claude no modo estudo com escuta |
 | `CLAUDE_TAB_WEB` | `1` | `0` desliga a busca e a leitura de páginas web |
 | `CLAUDE_TAB_FALLBACK` | `1` | Se um filtro de segurança recusar o pedido, o servidor tenta de novo no modelo recomendado. `0` desliga |
 | `CLAUDE_TAB_PASTA_NOTAS` | `Documentos/Claude` | Onde as notas são salvas |
@@ -151,6 +156,61 @@ O preço do `claude-opus-5-5` é **US$ 4 por milhão de tokens de entrada e US$ 
 - O Claude **não envia mensagens** por você: em "compartilhar", quem escolhe o app e aperta enviar é você.
 - `abrir_link` só aceita `https://`, `http://`, `geo:` e `mailto:`.
 - A chave fica em `~/.config/claude-tab/env` (permissão 600), dentro da área privada do Termux.
+
+---
+
+## Modo estudo: chamar o Claude sem parar de estudar
+
+Há três jeitos de chamar o Claude enquanto você estuda, do mais simples ao mais completo.
+
+### Jeito 1: só com o app oficial (níveis 1 e 2)
+
+- **Por voz:** se a ativação por voz da Bixby ("Oi Bixby", em *Configurações › Recursos avançados › Bixby*; o nome do menu pode variar) ou o "Ok Google" do Gemini estiver ligado, diga **"abrir Claude"** e toque no ícone de voz do app. Abra o Claude em **visualização pop-up** (janela flutuante) por cima do Samsung Notes para não perder a página.
+- **Por escrita:** tire a S Pen › **Comando aéreo › Claude** e escreva a pergunta à mão no campo de texto. O recurso S Pen para texto converte a letra.
+- **Pergunta escrita no caderno:** escreva a dúvida à mão no Samsung Notes, recorte com a **Seleção inteligente** e toque em **Compartilhar › Claude**.
+
+Limite: o app oficial não fica esperando a palavra "Claude". Você abre o app a cada pergunta.
+
+### Jeito 2: modo estudo do claude-tab, com botões
+
+Toque no atalho **Claude Estudo** (ou rode `claude-tab estudo`) e volte para o que estava estudando. Aparece uma **notificação fixa** que você alcança de qualquer app, puxando a barra de notificações:
+
+| Botão | O que faz |
+|---|---|
+| **Escrever** | Abre uma caixa de texto por cima do app atual. Escreva com a S Pen (vira texto) ou com o teclado. A resposta chega numa notificação |
+| **Falar** | Ouve uma pergunta e responde em voz alta e numa notificação |
+| **Encerrar** | Fecha o modo estudo e salva a sessão |
+
+O Claude lembra das perguntas anteriores da mesma sessão. Dá para pedir "explica de novo de um jeito mais simples".
+
+### Jeito 3: modo estudo com escuta ("Claude, …")
+
+Toque em **Claude Estudo Voz** (ou rode `claude-tab estudo --escutar`). O tablet fica ouvindo, e o Claude só responde quando a frase **começa com "Claude"**:
+
+- "Claude, o que é osmose?"
+- "Claude, explica de novo de um jeito mais simples."
+- "Claude, olha minha tela e me ajuda com esse exercício." (Tire uma captura de tela antes. Ele pede autorização para ver.)
+- "Claude, encerrar."
+
+Os botões da notificação continuam funcionando ao mesmo tempo.
+
+**O que é enviado ao Claude:**
+1. O reconhecimento de voz do Android transforma o que ouve em texto. Ele usa o serviço de voz do Google ou da Samsung, conforme a sua configuração.
+2. O claude-tab confere, no próprio tablet, se o texto começa com "Claude".
+3. Se não começar, o texto é descartado. Ele aparece só na janela do Termux, marcado como "ignorado".
+4. Só as frases que começam com "Claude" vão para a API.
+
+**Dicas:**
+- **Microfone:** deixe o Termux numa **janela pop-up pequena** ou em tela dividida ao lado do Samsung Notes. Se o Android pausar o microfone quando o Termux sai da tela, isso resolve.
+- **Bateria:** o ícone de microfone fica aceso enquanto o tablet escuta, e a escuta contínua gasta mais bateria. Para economizar, use o Jeito 2.
+- **Ele não entende "Claude":** veja na janela do Termux como a palavra apareceu em "ignorado" e acrescente essa grafia em `CLAUDE_TAB_PALAVRAS_ATIVACAO`.
+- **Respostas mais elaboradas:** use `CLAUDE_TAB_ESFORCO_ESTUDO=medium`. Elas demoram um pouco mais.
+
+**Registro da sessão:** cada pergunta e resposta é gravada em `Documentos/Claude/estudo-AAAA-MM-DD_HHMM.md`. Abra pelo Meus Arquivos para revisar depois.
+
+### Pergunta escrita à mão, com o claude-tab
+
+Escreva a dúvida no Samsung Notes › **Seleção inteligente** › **Compartilhar › Termux** › **Responder ao que escrevi**. O Claude lê a sua letra e responde numa notificação. Se for um exercício, ele explica a resolução passo a passo.
 
 ---
 
@@ -213,6 +273,9 @@ O atalho **Claude Code** do Termux:Widget abre direto o Ubuntu com o `claude`.
 | "Não encontrei capturas de tela" | Sem acesso ao armazenamento | `termux-setup-storage` |
 | Imagem grande dá erro | ImageMagick ausente | `pkg install imagemagick` |
 | Widget não aparece | Falta o Termux:Widget ou os scripts não estão em `~/.shortcuts` | Reinstale o Termux:Widget e rode o instalador de novo |
+| Modo estudo não reage a "Claude" | O reconhecedor escreveu a palavra de outro jeito | Veja a grafia em "ignorado" no Termux e acrescente em `CLAUDE_TAB_PALAVRAS_ATIVACAO` |
+| Escuta para quando saio do Termux | O Android pausa o microfone de apps fora da tela | Deixe o Termux em janela pop-up ou tela dividida |
+| Botão da notificação diz "modo estudo não está ativo" | A sessão foi fechada (ou o Termux encerrado) | Abra o atalho Claude Estudo de novo |
 | Voz não entende | Reconhecimento de voz do sistema em outro idioma | *Configurações › Gerenciamento geral › Idioma* e serviço de voz em Português |
 | Erro sobre `fallbacks` | A conta ou plataforma não aceita o recurso | `CLAUDE_TAB_FALLBACK=0` no arquivo `env` |
 | Erro sobre `web_search` | Busca web desativada na organização da API | `CLAUDE_TAB_WEB=0` ou habilite no console |
