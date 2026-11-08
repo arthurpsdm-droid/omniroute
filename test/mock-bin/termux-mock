@@ -45,6 +45,16 @@ case "$name" in
     # Fila de falas: uma linha de $MOCK_STT_FILE por chamada.
     n=$(cat "$MOCK_STT_FILE.n" 2>/dev/null || echo 0); n=$((n + 1)); echo "$n" > "$MOCK_STT_FILE.n"
     sed -n "${n}p" "$MOCK_STT_FILE" ;;
+  claude)
+    # Simula o Claude Code em modo não interativo.
+    if [ "$1" = "--version" ]; then echo "2.1.400 (Claude Code)"; exit 0; fi
+    echo "APIKEY=${ANTHROPIC_API_KEY:-<vazio>}" >> "${MOCK_LOG:-/dev/null}"
+    if [ -n "$MOCK_CLAUDE_ERRO" ]; then
+      printf '{"type":"result","subtype":"success","is_error":true,"result":"%s","session_id":"sess-1"}\n' "$MOCK_CLAUDE_ERRO"
+      exit 1
+    fi
+    n=$(cat "$MOCK_LOG.claude" 2>/dev/null || echo 0); n=$((n + 1)); echo "$n" > "$MOCK_LOG.claude"
+    printf '{"type":"result","subtype":"success","is_error":false,"result":"Resposta via assinatura %s","session_id":"sess-1","total_cost_usd":0.02}\n' "$n" ;;
   *) : ;;
 esac
 exit 0

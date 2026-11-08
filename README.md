@@ -6,6 +6,7 @@ Estudo completo do **Samsung Galaxy Tab S10** e uma integração que coloca o **
 
 1. **[Estudo completo do Galaxy Tab S10](docs/01-estudo-galaxy-tab-s10.md)**: os 5 modelos da linha, ficha técnica, tela e multitarefa, S Pen, Galaxy AI, DeX, segurança, bateria, pontos de atenção e checklist inicial.
 2. **[Guia de integração com o Claude](docs/02-integracao-claude.md)**: 4 níveis, do app oficial ao Claude Code com acesso ao hardware, e o **modo estudo** (chamar o Claude por voz com "Claude, …" ou escrevendo com a S Pen).
+3. **[Sem custo por resposta](docs/03-sem-custo-por-resposta.md)**: estudo e guia para o claude-tab responder pela sua assinatura do Claude (Claude Code), com comandos locais gratuitos para pedidos simples.
 
 ## Instalação rápida (no Termux do tablet)
 
@@ -24,7 +25,10 @@ Pré-requisitos: apps **Termux**, **Termux:API** e **Termux:Widget** (todos da m
 bin/claude-tab.mjs        CLI: perguntar, voz, tela, area, compartilhado, estudo, configurar, diagnostico, mcp
 bin/claude-tab-mcp.mjs    servidor MCP (stdio) para o Claude Code
 src/tools.mjs             ferramentas do tablet (um catálogo para a API e para o MCP)
-src/claude.mjs            conversa com o Claude (SDK oficial, tool runner, web)
+src/claude.mjs            conversa com o Claude pela API (SDK oficial, tool runner, web)
+src/claude-code.mjs       conversa pelo Claude Code da sua assinatura (sem custo por resposta)
+src/backend.mjs           escolhe API ou assinatura (CLAUDE_TAB_BACKEND)
+src/local.mjs             comandos locais sem custo (brilho, volume, lanterna, bateria, Wi-Fi)
 src/estudo.mjs            modo estudo: notificação com botões, escuta com "Claude, …", nota da sessão
 src/entrega.mjs           resposta em notificação com Copiar/Compartilhar
 src/termux.mjs            execução dos comandos Termux:API com tempo limite e confirmação

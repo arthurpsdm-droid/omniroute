@@ -31,6 +31,24 @@ export function loadEnvFile(file = ENV_FILE) {
   return true;
 }
 
+/**
+ * Grava (ou troca) uma linha CHAVE=valor no arquivo de configuração, com
+ * permissão só para o dono. Também atualiza o processo atual.
+ */
+export function gravarConfig(key, value, file = ENV_FILE) {
+  fs.mkdirSync(path.dirname(file), { recursive: true, mode: 0o700 });
+  let atual = "";
+  try {
+    atual = fs.readFileSync(file, "utf8");
+  } catch {}
+  const re = new RegExp(`^\\s*(export\\s+)?${key}=`);
+  const linhas = atual.split(/\r?\n/).filter((l) => l && !re.test(l));
+  linhas.push(`${key}=${value}`);
+  fs.writeFileSync(file, linhas.join("\n") + "\n", { mode: 0o600 });
+  fs.chmodSync(file, 0o600);
+  process.env[key] = value;
+}
+
 const SHARED = path.join(os.homedir(), "storage", "shared");
 
 export function settings() {
@@ -58,6 +76,16 @@ export function settings() {
     // Fallback automático do servidor quando um pedido é recusado.
     fallback: env.CLAUDE_TAB_FALLBACK !== "0",
     maxIterations: Number(env.CLAUDE_TAB_MAX_ITERACOES || 12),
+    // Quem responde: "api" (chave da API, cobrança por uso) ou "claude-code"
+    // (o Claude Code oficial logado na sua assinatura: sem custo por resposta).
+    backend: env.CLAUDE_TAB_BACKEND === "claude-code" ? "claude-code" : "api",
+    // Como chamar o Claude Code. Vazio = `claude` se estiver no PATH, senão o
+    // Ubuntu do proot-distro.
+    claudeCmd: env.CLAUDE_TAB_CLAUDE_CMD || "",
+    claudeModel: env.CLAUDE_TAB_MODELO_CLAUDE_CODE || "",
+    // Comandos simples (brilho, volume, lanterna, bateria, Wi-Fi) resolvidos no
+    // próprio tablet, sem chamar o Claude.
+    localCommands: env.CLAUDE_TAB_COMANDOS_LOCAIS !== "0",
     // Pastas no armazenamento interno (após `termux-setup-storage`).
     notesDir: env.CLAUDE_TAB_PASTA_NOTAS || path.join(SHARED, "Documents", "Claude"),
     photosDir: env.CLAUDE_TAB_PASTA_FOTOS || path.join(SHARED, "Pictures", "Claude"),

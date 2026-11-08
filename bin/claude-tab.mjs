@@ -7,8 +7,11 @@ import os from "node:os";
 import path from "node:path";
 import { parseArgs } from "node:util";
 import { createInterface } from "node:readline";
-import { loadEnvFile, settings as loadSettings, CONFIG_DIR, ENV_FILE } from "../src/config.mjs";
-import { Conversa, explainError } from "../src/claude.mjs";
+import { loadEnvFile, settings as loadSettings, gravarConfig, ENV_FILE } from "../src/config.mjs";
+import { explainError } from "../src/claude.mjs";
+import { criarConversa, descreverBackend } from "../src/backend.mjs";
+import { ConversaClaudeCode, versaoClaudeCode } from "../src/claude-code.mjs";
+import { executarLocal } from "../src/local.mjs";
 import { run, runJson, hasCommand } from "../src/termux.mjs";
 import { falar, ouvir } from "../src/tools.mjs";
 import { salvarResposta, notificarResposta } from "../src/entrega.mjs";
@@ -28,6 +31,8 @@ Uso:
   claude-tab estudo [--escutar]     modo estudo: notificação com Escrever/Falar/Encerrar;
                                     com --escutar, responde quando você diz "Claude, …"
   claude-tab configurar             salva a chave da API do Claude
+  claude-tab usar-assinatura        responde pelo Claude Code da sua assinatura (sem custo por resposta)
+  claude-tab usar-api               volta a responder pela API (cobrança por uso)
   claude-tab diagnostico            confere a instalação
   claude-tab mcp                    inicia o servidor MCP (para o Claude Code)
 
@@ -100,7 +105,7 @@ async function entregar(texto, opts, s) {
 }
 
 function novaConversa(s, opts, { voz = false } = {}) {
-  return new Conversa({
+  return criarConversa({
     settings: s,
     voz,
     ferramentas: !opts["sem-ferramentas"],
@@ -228,6 +233,12 @@ async function cmdVoz(_pos, opts) {
       await falar("Até mais!", s.language).catch(() => {});
       return;
     }
+    const local = await executarLocal(fala, { settings: s }).catch(() => null);
+    if (local) {
+      console.log(`Tablet (comando local, sem custo): ${local}`);
+      await falar(local, s.language).catch((e) => log(`(aviso) ${e.message}`));
+      continue;
+    }
     try {
       const { text } = await conversa.enviar(fala);
       console.log(`Claude: ${text}`);
@@ -273,16 +284,54 @@ async function cmdConfigurar() {
     process.exitCode = 1;
     return;
   }
-  await fs.mkdir(CONFIG_DIR, { recursive: true, mode: 0o700 });
-  let atual = "";
-  try {
-    atual = await fs.readFile(ENV_FILE, "utf8");
-  } catch {}
-  const linhas = atual.split(/\r?\n/).filter((l) => l && !/^\s*(export\s+)?ANTHROPIC_API_KEY=/.test(l));
-  linhas.unshift(`ANTHROPIC_API_KEY=${chave}`);
-  await fs.writeFile(ENV_FILE, linhas.join("\n") + "\n", { mode: 0o600 });
-  await fs.chmod(ENV_FILE, 0o600);
+  gravarConfig("ANTHROPIC_API_KEY", chave);
   console.log(`Chave salva em ${ENV_FILE} (somente você pode ler).`);
+}
+
+async function cmdUsarAssinatura() {
+  const s = { ...loadSettings(), backend: "claude-code" };
+  console.log("1/3 Procurando o Claude Code…");
+  let versao;
+  try {
+    versao = await versaoClaudeCode(s);
+  } catch (err) {
+    console.error(
+      `Não encontrei o Claude Code (${explainError(err)}).\n` +
+        "Instale-o no Ubuntu do Termux (guia, nível 4):\n" +
+        "  pkg install -y proot-distro && proot-distro install ubuntu && proot-distro login ubuntu\n" +
+        "  apt update && apt install -y curl git && curl -fsSL https://claude.ai/install.sh | bash\n" +
+        "  claude   # entre com a conta do Claude (assinatura Pro, Max ou Ultra)",
+    );
+    process.exitCode = 1;
+    return;
+  }
+  console.log(`   ✅ ${versao}`);
+  console.log("2/3 Testando uma resposta pela sua assinatura…");
+  try {
+    const { text } = await new ConversaClaudeCode({ settings: s, ferramentas: false }).enviar(
+      "Teste do claude-tab. Responda apenas: ok",
+    );
+    console.log(`   ✅ O Claude respondeu: ${text.slice(0, 80)}`);
+  } catch (err) {
+    console.error(`   ❌ ${explainError(err)}`);
+    process.exitCode = 1;
+    return;
+  }
+  gravarConfig("CLAUDE_TAB_BACKEND", "claude-code");
+  console.log(
+    "3/3 Pronto. O claude-tab agora responde pelo Claude Code da sua assinatura:\n" +
+      "    sem custo por resposta; o uso conta nos limites do seu plano.\n" +
+      "    Para voltar à API: claude-tab usar-api",
+  );
+}
+
+async function cmdUsarApi() {
+  gravarConfig("CLAUDE_TAB_BACKEND", "api");
+  const temChave = Boolean(process.env.ANTHROPIC_API_KEY);
+  console.log(
+    "O claude-tab voltou a responder pela API (cobrança por uso)." +
+      (temChave ? "" : "\nFalta a chave: rode claude-tab configurar."),
+  );
 }
 
 async function cmdDiagnostico() {
@@ -308,8 +357,18 @@ async function cmdDiagnostico() {
     .catch(() => false);
   linhas.push(`${ok(storage)} acesso ao armazenamento (termux-setup-storage)`);
   linhas.push(`${ok(await hasCommand("magick") || await hasCommand("convert"))} ImageMagick (reduz imagens grandes)`);
-  linhas.push(`${ok(Boolean(process.env.ANTHROPIC_API_KEY || process.env.ANTHROPIC_AUTH_TOKEN))} chave da API configurada`);
-  linhas.push(`${ok(await hasCommand("claude"))} Claude Code instalado (opcional)`);
+  linhas.push(`Modo de cobrança: ${descreverBackend(s)}`);
+  if (s.backend === "claude-code") {
+    let versao = "";
+    try {
+      versao = await versaoClaudeCode(s);
+    } catch {}
+    linhas.push(`${ok(Boolean(versao))} Claude Code respondendo${versao ? ` (${versao})` : ""}`);
+  } else {
+    linhas.push(`${ok(Boolean(process.env.ANTHROPIC_API_KEY || process.env.ANTHROPIC_AUTH_TOKEN))} chave da API configurada`);
+    linhas.push(`${ok(await hasCommand("claude"))} Claude Code instalado (opcional)`);
+  }
+  linhas.push(`${ok(s.localCommands)} comandos locais sem custo (brilho, volume, lanterna, bateria, Wi-Fi)`);
   linhas.push(`Modelo: ${s.model} · esforço: ${s.effort} (voz: ${s.voiceEffort}) · confirmação: ${s.confirm}`);
   console.log(linhas.join("\n"));
 }
@@ -326,6 +385,8 @@ const COMANDOS = {
   estudo: cmdEstudo,
   "estudo-acao": cmdEstudoAcao,
   configurar: cmdConfigurar,
+  "usar-assinatura": cmdUsarAssinatura,
+  "usar-api": cmdUsarApi,
   diagnostico: cmdDiagnostico,
 };
 

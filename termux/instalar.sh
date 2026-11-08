@@ -83,5 +83,6 @@ Próximos passos:
   • Teste:  claude-tab perguntar "Oi! Qual a bateria do tablet?"
   • Voz:    claude-tab voz
   • Estudo: claude-tab estudo --escutar   (diga "Claude, …" enquanto estuda)
+  • Sem custo por resposta (assinatura Pro/Max/Ultra): claude-tab usar-assinatura
   • Guia completo: docs/02-integracao-claude.md
 EOF

@@ -14,7 +14,9 @@ import fs from "node:fs/promises";
 import http from "node:http";
 import path from "node:path";
 import { run, runJson } from "./termux.mjs";
-import { Conversa, SYSTEM_BASE, explainError } from "./claude.mjs";
+import { SYSTEM_BASE, explainError } from "./claude.mjs";
+import { criarConversa } from "./backend.mjs";
+import { executarLocal } from "./local.mjs";
 import { falar, ouvir } from "./tools.mjs";
 import { CACHE_DIR, binTermux, notificarResposta, aviso } from "./entrega.mjs";
 
@@ -175,7 +177,7 @@ export async function modoEstudo({ settings, escutar = false, log = console.log,
 
   const lang = settings.language;
   const nota = new NotaSessao(settings.notesDir);
-  conversa ??= new Conversa({
+  conversa ??= criarConversa({
     settings,
     system: SYSTEM_ESTUDO,
     effort: settings.studyEffort,
@@ -206,6 +208,13 @@ export async function modoEstudo({ settings, escutar = false, log = console.log,
 
   async function perguntar(origem, texto) {
     log(`\nVocê (${origem}): ${texto}`);
+    const local = await executarLocal(texto, { settings }).catch(() => null);
+    if (local) {
+      log(`Tablet (comando local, sem custo): ${local}`);
+      if (origem === "voz") await falar(local, lang).catch(() => {});
+      else await aviso(local);
+      return;
+    }
     aviso("Claude está pensando…");
     let resposta;
     try {

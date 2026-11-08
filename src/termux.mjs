@@ -36,9 +36,9 @@ function notFoundHint(cmd) {
  * Roda um comando e devolve o stdout como texto.
  * @param {string} cmd
  * @param {string[]} [args]
- * @param {{input?: string, timeoutMs?: number}} [opts]
+ * @param {{input?: string, timeoutMs?: number, env?: NodeJS.ProcessEnv}} [opts]
  */
-export function run(cmd, args = [], { input, timeoutMs = 30_000 } = {}) {
+export function run(cmd, args = [], { input, timeoutMs = 30_000, env } = {}) {
   return new Promise((resolve, reject) => {
     let settled = false;
     const finish = (fn, value) => {
@@ -48,7 +48,7 @@ export function run(cmd, args = [], { input, timeoutMs = 30_000 } = {}) {
       fn(value);
     };
 
-    const child = spawn(cmd, args, { stdio: ["pipe", "pipe", "pipe"] });
+    const child = spawn(cmd, args, { stdio: ["pipe", "pipe", "pipe"], env: env ?? process.env });
     let out = "";
     let err = "";
     const timer = setTimeout(() => {

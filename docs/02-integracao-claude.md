@@ -147,6 +147,8 @@ claude-tab voz
 
 ### Custos (estimativa)
 
+> **Quer zerar o custo por resposta?** Veja [Sem custo por resposta](03-sem-custo-por-resposta.md): com uma assinatura Pro, Max ou Ultra, o claude-tab responde pelo Claude Code do seu plano (`claude-tab usar-assinatura`), e pedidos simples ao tablet já são resolvidos localmente, sem chamar o Claude.
+
 O preço do `claude-opus-5-5` é **US$ 4 por milhão de tokens de entrada e US$ 20 por milhão de saída** (tabela de outubro de 2026). Uma pergunta típica do claude-tab envia cerca de 4–6 mil tokens (instruções + descrição das ferramentas) e recebe algumas centenas. Isso dá **centavos de dólar por pergunta**, menos quando o cache de prompt é aproveitado em conversas seguidas. Imagens e PDFs aumentam o consumo, e as buscas na web são cobradas à parte. Acompanhe o gasto em *console.anthropic.com › Usage* e defina um limite mensal lá.
 
 ### Privacidade e segurança

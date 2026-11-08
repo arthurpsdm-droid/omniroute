@@ -101,12 +101,12 @@ test("tela envia a captura de tela mais recente", async () => {
 
 test("voz: ouve, responde em voz alta e encerra com 'tchau'", async () => {
   const fila = path.join(sb.dir, "stt.txt");
-  fs.writeFileSync(fila, "como está a bateria\ntchau\n");
+  fs.writeFileSync(fila, "qual a capital da França\ntchau\n");
   sb.env.MOCK_STT_FILE = fila;
   const r = await runCli(["voz"], sb.env);
   assert.equal(r.code, 0, r.stderr);
   assert.equal(api.requests.length, 1);
-  assert.match(r.stdout, /Você: como está a bateria\nClaude: Resposta 1/);
+  assert.match(r.stdout, /Você: qual a capital da França\nClaude: Resposta 1/);
   const calls = sb.calls();
   assert.match(calls, /CALL termux-tts-speak -l pt -n BR\nSTDIN Resposta 1/);
   assert.match(calls, /STDIN Até mais!/);
@@ -151,4 +151,45 @@ test("lê a chave do arquivo de configuração", async () => {
   assert.equal(r.code, 0, r.stderr);
   const h = api.requests[0].headers;
   assert.ok(h["x-api-key"] === "sk-ant-do-arquivo" || h.authorization === "Bearer sk-ant-do-arquivo");
+});
+
+test("voz: comando simples é resolvido no tablet, sem chamar o Claude", async () => {
+  const fila = path.join(sb.dir, "stt.txt");
+  fs.writeFileSync(fila, "abaixa o brilho para 30 por cento\ncomo está a bateria\ntchau\n");
+  sb.env.MOCK_STT_FILE = fila;
+  const r = await runCli(["voz"], sb.env);
+  assert.equal(r.code, 0, r.stderr);
+  assert.equal(api.requests.length, 0, "nenhuma chamada à API");
+  const calls = sb.calls();
+  assert.match(calls, /CALL termux-brightness 77\n/);
+  assert.match(calls, /STDIN Pronto, brilho em 30%\./);
+  assert.match(calls, /STDIN A bateria está em 80% e não está carregando\./);
+  assert.match(r.stdout, /comando local, sem custo/);
+});
+
+test("modo assinatura: perguntar usa o Claude Code e não a API", async () => {
+  sb.env.CLAUDE_TAB_BACKEND = "claude-code";
+  const r = await runCli(["perguntar", "Qual a capital do Brasil?"], sb.env);
+  assert.equal(r.code, 0, r.stderr);
+  assert.equal(r.stdout.trim(), "Resposta via assinatura 1");
+  assert.equal(api.requests.length, 0);
+  const calls = sb.calls();
+  assert.match(calls, /CALL claude -p --output-format json /);
+  assert.match(calls, /APIKEY=<vazio>/, "a chave da API não chega ao Claude Code");
+  assert.match(calls, /STDIN Qual a capital do Brasil\?/);
+});
+
+test("usar-assinatura testa o Claude Code e grava a escolha", async () => {
+  const r = await runCli(["usar-assinatura"], sb.env);
+  assert.equal(r.code, 0, r.stderr);
+  assert.match(r.stdout, /✅ 2\.1\.400 \(Claude Code\)/);
+  assert.match(r.stdout, /sem custo por resposta/);
+  const env = fs.readFileSync(path.join(sb.env.CLAUDE_TAB_CONFIG_DIR, "env"), "utf8");
+  assert.match(env, /^CLAUDE_TAB_BACKEND=claude-code$/m);
+  const diag = await runCli(["diagnostico"], { ...sb.env, ANTHROPIC_API_KEY: "" });
+  assert.match(diag.stdout, /Modo de cobrança: assinatura \(Claude Code\): sem custo por resposta/);
+  assert.match(diag.stdout, /✅ Claude Code respondendo \(2\.1\.400 \(Claude Code\)\)/);
+  const volta = await runCli(["usar-api"], sb.env);
+  assert.match(volta.stdout, /voltou a responder pela API/);
+  assert.match(fs.readFileSync(path.join(sb.env.CLAUDE_TAB_CONFIG_DIR, "env"), "utf8"), /^CLAUDE_TAB_BACKEND=api$/m);
 });
